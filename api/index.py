@@ -174,5 +174,19 @@ def in_call():
     return convert_to_twiml(str(twiml_xml))
 
 
+@app.route("/audio/<path:filename>")
+def serve_audio(filename):
+    """
+    Twilio issues a GET to this endpoint when it sees <Play>...</Play>.
+    We stream back the MP3 from CACHE_DIR.
+    """
+    return send_from_directory(
+        CACHE_DIR,
+        filename,
+        mimetype="audio/mpeg",
+        conditional=True            # adds ETag / range support
+    )
+
+
 if __name__ == '__main__':
     app.run(debug=True)
