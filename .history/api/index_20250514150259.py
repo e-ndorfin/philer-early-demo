@@ -1,16 +1,3 @@
-import tempfile
-from utils.tts import text_to_speech
-from dotenv import load_dotenv
-from twilio.rest import Client
-from langgraph.types import Command, Interrupt
-from copy import deepcopy
-from twiml_template import introduction
-from core.workflow import intake_workflow
-from core.state import ConversationState
-# Removed save_request_data as we're disabling data saving
-from utils_twi import twiml
-from twilio.twiml.voice_response import VoiceResponse, Gather, Say, Hangup
-from flask import Flask, request, jsonify, url_for, send_from_directory, render_template
 import sys
 import os
 from pathlib import Path
@@ -21,11 +8,22 @@ ai_intake_dir = current_dir / 'AI-Intake'
 sys.path.append(str(ai_intake_dir))
 
 # Import needed modules from AI-Intake
+from flask import Flask, request, jsonify, url_for, send_from_directory
+from twilio.twiml.voice_response import VoiceResponse, Gather, Say, Hangup
 
 # Fix imports - proper way to import
-# Disabled Airtable imports
-# from airtable.outbound import airtable_to_json, write_json_file
-# from airtable.utils import populate_form_data
+from utils_twi import save_request_data, twiml
+from core.state import ConversationState
+from core.workflow import intake_workflow
+from twiml_template import introduction
+from copy import deepcopy
+from langgraph.types import Command, Interrupt
+from twilio.rest import Client
+from dotenv import load_dotenv
+from airtable.outbound import airtable_to_json, write_json_file
+from airtable.utils import populate_form_data
+from utils.tts import text_to_speech
+import tempfile
 
 # Load environment variables
 load_dotenv()
@@ -39,7 +37,7 @@ os.makedirs(CACHE_DIR, exist_ok=True)
 
 # Configuration for the workflow
 config = {
-    "recursion_limit": 500,
+    "recursion_limit": 500, 
     "configurable": {"thread_id": "intake-thread-1"}
 }
 
@@ -58,65 +56,81 @@ INITIAL_STATE_TEMPLATE: ConversationState = {
 # Dictionary to store active call sessions
 call_sessions: dict[str, ConversationState] = {}
 
-
 @app.route('/')
 def home():
-    return render_template('index.html')
-
+    return 'Philer AI Intake System - Vercel Deployment'
 
 @app.route('/health')
 def health():
     return jsonify({"status": "healthy"}), 200
 
-
-@app.route('/call', methods=['GET', 'POST'])
+@app.route('/call')
 def call():
-    # Get the phone number from the request - either from form POST or query parameter
-    if request.method == 'POST':
-        to_number = request.form.get('phone_number')
-    else:
-        to_number = request.args.get('phone')
-
-    if not to_number:
-        return jsonify({"error": "Phone number is required"}), 400
-
-    # Use Twilio credentials from environment
+    api_key = os.environ.get('AIRTABLE_API_KEY')  
+    base_id = os.environ.get('AIRTABLE_BASE_ID') 
+    table_name = os.environ.get('FILES_TABLE_NAME')
+    view_name = "Intake View" 
+    selected_fields = [
+        "File Number",
+        "Main Applicant",
+        "Second Applicant",
+        "Third Applicant",
+        "Fourth Applicant",
+        "Transaction Type",
+        "Full Address",
+        "Pre Con?",
+        "Property Type",
+        "Intent of Use",
+        "Holding Title As",
+        "Current Address",
+        "Closing Date",
+        "Mortgage Agent",
+        "Realtor",
+        "Insurance Agent",
+        "pre-auth token"
+    ]
+    
     from_number = os.environ.get("TWILIO_PHONE_NUMBER")
-    account_sid = os.environ.get("TWILIO_ACCOUNT_SID")
-    auth_token = os.environ.get("TWILIO_AUTH_TOKEN")
+    to_number = request.args.get('phone', "+14379882696")  # Allow phone number as a parameter or use default
 
-    if not all([from_number, account_sid, auth_token]):
-        return jsonify({"error": "Twilio configuration is incomplete"}), 500
+    account_sid = os.environ["TWILIO_ACCOUNT_SID"]
+    auth_token = os.environ["TWILIO_AUTH_TOKEN"]
+    client = Client(account_sid, auth_token)
 
-    try:
-        client = Client(account_sid, auth_token)
-
-        # Initialize empty state without Airtable data
+    identifier_field_name = "File Number"
+    identifier_value_to_fetch = request.args.get('token')
+    data = airtable_to_json(api_key, base_id, table_name, selected_fields, identifier_field_name, identifier_value_to_fetch, view_name=view_name)
+    
+    if data:
+        write_json_file(data, f"{identifier_value_to_fetch}.json")
+        form_data = populate_form_data(data)
         state = deepcopy(INITIAL_STATE_TEMPLATE)
+        state["form_data"] = form_data
 
-        # Make the call
         call = client.calls.create(
             twiml=introduction(),
             to=to_number,
             from_=from_number
         )
-
-        # Store the session state
         call_sessions[call.sid] = state
         print(f"call id: {call.sid}")
-
         return jsonify({
-            "status": "success",
+            "status": "success", 
             "message": "Call initiated",
             "call_sid": call.sid
         }), 200
-
-    except Exception as e:
+    else:
+        print("Failed to retrieve data from Airtable.")
+        call = client.calls.create(
+            twiml=introduction(),
+            to=to_number,
+            from_=from_number
+        )
         return jsonify({
-            "status": "error",
-            "message": f"Error initiating call: {str(e)}"
-        }), 500
-
+            "status": "warning", 
+            "message": "Call initiated but failed to retrieve Airtable data",
+            "call_sid": call.sid
+        }), 200
 
 @app.route('/in-call', methods=['GET', 'POST'])
 def in_call():
@@ -126,8 +140,7 @@ def in_call():
         return "Missing CallSid", 400
 
     # fetch existing state or start fresh
-    state: ConversationState = call_sessions.get(
-        call_sid, deepcopy(INITIAL_STATE_TEMPLATE))
+    state: ConversationState = call_sessions.get(call_sid, deepcopy(INITIAL_STATE_TEMPLATE))
     audio_url = ""
     question = ""
 
@@ -182,7 +195,7 @@ def in_call():
                 question = interrupt.value
             else:
                 question = event["agent_response"]
-
+        
         call_sessions[call_sid] = state
         response = VoiceResponse()
         if done:
@@ -200,7 +213,7 @@ def in_call():
         response.append(gather)
         response.say("We did not receive a response, please try again.")
         response.redirect(url_for('in_call', _external=True), method='POST')
-
+        
         return twiml(response)
     else:
         user_response = "what is the weather"
@@ -241,9 +254,8 @@ def in_call():
         response.append(gather)
         response.say("We did not receive a response, please try again.")
         response.redirect(url_for('in_call', _external=True), method='POST')
-
+        
         return twiml(response)
-
 
 @app.route("/audio/<path:filename>")
 def serve_audio(filename):
@@ -259,22 +271,20 @@ def serve_audio(filename):
     )
 
 # Add route to generate link for making outbound calls
-
-
 @app.route('/generate-link', methods=['GET'])
 def generate_link():
     token = request.args.get('token')
     phone = request.args.get('phone')
-
+    
     if not token or not phone:
         return jsonify({"error": "Missing token or phone parameter"}), 400
-
+    
     # Get the base URL from the request
     host = request.host_url.rstrip('/')
-
+    
     # Generate the call link
     call_link = f"{host}/call?token={token}&phone={phone}"
-
+    
     return jsonify({
         "call_link": call_link,
         "token": token,

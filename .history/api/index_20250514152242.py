@@ -1,16 +1,3 @@
-import tempfile
-from utils.tts import text_to_speech
-from dotenv import load_dotenv
-from twilio.rest import Client
-from langgraph.types import Command, Interrupt
-from copy import deepcopy
-from twiml_template import introduction
-from core.workflow import intake_workflow
-from core.state import ConversationState
-# Removed save_request_data as we're disabling data saving
-from utils_twi import twiml
-from twilio.twiml.voice_response import VoiceResponse, Gather, Say, Hangup
-from flask import Flask, request, jsonify, url_for, send_from_directory, render_template
 import sys
 import os
 from pathlib import Path
@@ -21,11 +8,23 @@ ai_intake_dir = current_dir / 'AI-Intake'
 sys.path.append(str(ai_intake_dir))
 
 # Import needed modules from AI-Intake
+from flask import Flask, request, jsonify, url_for, send_from_directory, render_template
+from twilio.twiml.voice_response import VoiceResponse, Gather, Say, Hangup
 
 # Fix imports - proper way to import
+from utils_twi import twiml  # Removed save_request_data as we're disabling data saving
+from core.state import ConversationState
+from core.workflow import intake_workflow
+from twiml_template import introduction
+from copy import deepcopy
+from langgraph.types import Command, Interrupt
+from twilio.rest import Client
+from dotenv import load_dotenv
 # Disabled Airtable imports
 # from airtable.outbound import airtable_to_json, write_json_file
 # from airtable.utils import populate_form_data
+from utils.tts import text_to_speech
+import tempfile
 
 # Load environment variables
 load_dotenv()
@@ -39,7 +38,7 @@ os.makedirs(CACHE_DIR, exist_ok=True)
 
 # Configuration for the workflow
 config = {
-    "recursion_limit": 500,
+    "recursion_limit": 500, 
     "configurable": {"thread_id": "intake-thread-1"}
 }
 
@@ -58,16 +57,13 @@ INITIAL_STATE_TEMPLATE: ConversationState = {
 # Dictionary to store active call sessions
 call_sessions: dict[str, ConversationState] = {}
 
-
 @app.route('/')
 def home():
     return render_template('index.html')
 
-
 @app.route('/health')
 def health():
     return jsonify({"status": "healthy"}), 200
-
 
 @app.route('/call', methods=['GET', 'POST'])
 def call():
@@ -76,47 +72,46 @@ def call():
         to_number = request.form.get('phone_number')
     else:
         to_number = request.args.get('phone')
-
+    
     if not to_number:
         return jsonify({"error": "Phone number is required"}), 400
-
+    
     # Use Twilio credentials from environment
     from_number = os.environ.get("TWILIO_PHONE_NUMBER")
     account_sid = os.environ.get("TWILIO_ACCOUNT_SID")
     auth_token = os.environ.get("TWILIO_AUTH_TOKEN")
-
+    
     if not all([from_number, account_sid, auth_token]):
         return jsonify({"error": "Twilio configuration is incomplete"}), 500
-
+    
     try:
         client = Client(account_sid, auth_token)
-
+        
         # Initialize empty state without Airtable data
         state = deepcopy(INITIAL_STATE_TEMPLATE)
-
+        
         # Make the call
         call = client.calls.create(
             twiml=introduction(),
             to=to_number,
             from_=from_number
         )
-
+        
         # Store the session state
         call_sessions[call.sid] = state
         print(f"call id: {call.sid}")
-
+        
         return jsonify({
-            "status": "success",
+            "status": "success", 
             "message": "Call initiated",
             "call_sid": call.sid
         }), 200
-
+            
     except Exception as e:
         return jsonify({
-            "status": "error",
+            "status": "error", 
             "message": f"Error initiating call: {str(e)}"
         }), 500
-
 
 @app.route('/in-call', methods=['GET', 'POST'])
 def in_call():
