@@ -1,9 +1,0 @@
-.env
-.venv/
-__pycache__/
-*/__pycache__/
-test-jsons/
-final_json.json
-form_data.json
-test_json.json
-input_json.json
