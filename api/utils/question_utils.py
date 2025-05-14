@@ -5,7 +5,7 @@ This module provides utility functions for working with questions,
 such as finding questions by ID and determining the next question.
 """
 
-from questions.questions import QUESTIONS
+from ..questions.questions import QUESTIONS
 
 def get_question_by_id(question_id):
     """
