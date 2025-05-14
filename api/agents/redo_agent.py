@@ -13,18 +13,21 @@ from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
 from pydantic import BaseModel, Field
-from core.state import ConversationState, CorrectionDetails, CorrectionType
-from questions.questions import QUESTIONS
-from utils.question_utils import get_question_by_id, get_previous_question_id, get_readable_field_name
-from utils.extraction_utils import format_conversation_history
+from ..core.state import ConversationState, CorrectionDetails, CorrectionType
+from ..questions.questions import QUESTIONS
+from ..utils.question_utils import get_question_by_id, get_previous_question_id, get_readable_field_name
+from ..utils.extraction_utils import format_conversation_history
 
 # Load environment variables
 load_dotenv()
 groq_api_key = os.getenv("GROQ_API_KEY")
 
-model = ChatGroq(api_key=groq_api_key, model="llama-3.3-70b-versatile", temperature=0.1)
+model = ChatGroq(api_key=groq_api_key,
+                 model="llama-3.3-70b-versatile", temperature=0.1)
 
 # Define the structured output schema for correction analysis
+
+
 class CorrectionAnalysis(BaseModel):
     correction_type: Literal["go_back", "inline_update", "needs_clarification", "not_a_correction"] = Field(
         description="The type of correction needed: go_back (return to a previous question), inline_update (update a value but continue), needs_clarification (user intent is unclear), or not_a_correction (this is actually an answer to the current question)"
@@ -40,6 +43,7 @@ class CorrectionAnalysis(BaseModel):
     explanation: str = Field(
         description="A brief reason for this decision"
     )
+
 
 # Create a parser for the structured output
 parser = PydanticOutputParser(pydantic_object=CorrectionAnalysis)
@@ -129,6 +133,7 @@ Keep your response concise and focused. Don't add unnecessary explanation or com
 correction_analyzer_prompt = ChatPromptTemplate.from_template(CORRECTION_ANALYZER_PROMPT) \
     .partial(format_instructions=parser.get_format_instructions())
 
+
 def handle_redo_agent(state: ConversationState) -> Dict[str, Any]:
     """
     Intelligent agent that determines how to handle corrections based on user input.
@@ -138,13 +143,13 @@ def handle_redo_agent(state: ConversationState) -> Dict[str, Any]:
     user_response = state.get("user_response", "")
     history = state["conversation_history"]
     form_data = state.get("form_data", {})
-    
+
     # Format the conversation history
     formatted_history = format_conversation_history(history)
-    
+
     # Analyze correction intent using LLM with structured output parsing
     chain = correction_analyzer_prompt | model | parser
-    
+
     try:
         # Try to get a structured response from the LLM
         correction_details = chain.invoke({
@@ -153,72 +158,75 @@ def handle_redo_agent(state: ConversationState) -> Dict[str, Any]:
             "user_response": user_response,
             "conversation_history": formatted_history
         })
-        
+
         if correction_details.correction_type == "not_a_correction":
             return {
                 "redo_is_correction": False,
                 "explanation": correction_details.explanation
             }
-        
+
         if correction_details.correction_type == "inline_update" and correction_details.target_question_id and correction_details.corrected_value is not None:
             updated_form_data = form_data.copy()
             updated_form_data[correction_details.target_question_id] = correction_details.corrected_value
-            
-            field_name = get_readable_field_name(correction_details.target_question_id)
-                
+
+            field_name = get_readable_field_name(
+                correction_details.target_question_id)
+
             ack_msg = f"I've updated your {field_name} to '{correction_details.corrected_value}'. "
             full_response = f"{ack_msg}Now, {current_question['text']}"
-            
+
             updated_history = history + [("Assistant", full_response)]
-            
+
             return {
                 "agent_response": full_response,
                 "form_data": updated_form_data,
                 "conversation_history": updated_history,
                 "redo_is_correction": True
             }
-            
+
         elif correction_details.correction_type == "needs_clarification":
             previous_id = get_previous_question_id(current_question_id)
             previous_question = get_question_by_id(previous_id)
-            
+
             full_response = f"Let's go back to the previous question. {previous_question['text']}"
             updated_history = history + [("Assistant", full_response)]
-            
+
             return {
                 "agent_response": full_response,
                 "current_question_id": previous_id,
                 "conversation_history": updated_history,
                 "redo_is_correction": True
             }
-            
+
         elif correction_details.correction_type == "go_back" and correction_details.target_question_id:
-            target_question = get_question_by_id(correction_details.target_question_id)
+            target_question = get_question_by_id(
+                correction_details.target_question_id)
             if not target_question:
-                target_question_id = get_previous_question_id(current_question_id)
+                target_question_id = get_previous_question_id(
+                    current_question_id)
                 target_question = get_question_by_id(target_question_id)
             else:
                 target_question_id = correction_details.target_question_id
-            
+
             field_name = get_readable_field_name(target_question_id)
-            
+
             ack_msg = f"Let's go back to update your {field_name}. "
             full_response = f"{ack_msg}{target_question['text']}"
-            
+
             updated_history = history + [("Assistant", full_response)]
-            
+
             return {
                 "agent_response": full_response,
                 "current_question_id": target_question_id,
                 "conversation_history": updated_history,
                 "redo_is_correction": True
             }
-        
+
     except Exception as e:
         print(f"Error in correction analysis: {e}")
-    
+
     # If we reach here, either the LLM failed to produce a valid output or parsing failed
     return {
         "redo_is_correction": False,
         "explanation": "Failed to parse correction intent"
-    } 
+    }

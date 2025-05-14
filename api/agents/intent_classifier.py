@@ -13,16 +13,17 @@ import os
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
-from core.state import ConversationState
+from ..core.state import ConversationState
 
-from questions.questions import QUESTIONS
-from utils.question_utils import get_question_by_id
+from ..questions.questions import QUESTIONS
+from ..utils.question_utils import get_question_by_id
 
 # Load environment variables
 load_dotenv()
 groq_api_key = os.getenv("GROQ_API_KEY")
 
-model = ChatGroq(api_key=groq_api_key, model="llama-3.3-70b-versatile", temperature=0.1)
+model = ChatGroq(api_key=groq_api_key,
+                 model="llama-3.3-70b-versatile", temperature=0.1)
 
 INTENT_CLASSIFIER_PROMPT = """
 You are an intent classifier for a conversational AI assistant that helps users fill out forms.
@@ -73,7 +74,9 @@ Always remember:
 Return ONLY the category name (confusion, question, answer, or correction) with no additional explanation.
 """
 
-intent_classifier_prompt = ChatPromptTemplate.from_template(INTENT_CLASSIFIER_PROMPT)
+intent_classifier_prompt = ChatPromptTemplate.from_template(
+    INTENT_CLASSIFIER_PROMPT)
+
 
 def classify_intent_node(state: ConversationState) -> Dict[str, Any]:
     """
@@ -81,28 +84,30 @@ def classify_intent_node(state: ConversationState) -> Dict[str, Any]:
     Updates the intent field in the state.
     """
     current_question_id = state["current_question_id"]
-    
+
     if current_question_id == "farewell":
         return {"is_done": True}
-    
+
     current_question = get_question_by_id(current_question_id)
-    
+
     user_response = state.get("user_response", "")
-    
+
     conversation_history = state.get("conversation_history", [])
-    recent_exchanges = conversation_history[-6:] if len(conversation_history) > 6 else conversation_history
-    conversation_context = "\n".join([f"{'User' if role == 'User' else 'Assistant'}: {message}" for role, message in recent_exchanges])
-    
+    recent_exchanges = conversation_history[-6:] if len(
+        conversation_history) > 6 else conversation_history
+    conversation_context = "\n".join(
+        [f"{'User' if role == 'User' else 'Assistant'}: {message}" for role, message in recent_exchanges])
+
     chain = intent_classifier_prompt | model
     intent_response = chain.invoke({
         "question_text": current_question["text"],
         "user_response": user_response,
         "conversation_context": conversation_context
     })
-    
+
     intent = intent_response.content.strip().lower()
-    
+
     if intent not in ["confusion", "question", "answer", "correction"]:
         intent = "confusion"
-    
-    return {"intent": intent} 
+
+    return {"intent": intent}
