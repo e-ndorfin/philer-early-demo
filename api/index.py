@@ -13,9 +13,14 @@ from langgraph.types import Command, Interrupt
 from dotenv import load_dotenv
 import tempfile
 import os
+import sys
 
-from utils import introduction, text_to_speech, introduction, convert_to_twiml
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from utils import introduction, text_to_speech, convert_to_twiml
 from core import ConversationState, intake_workflow
+
 
 
 load_dotenv()
