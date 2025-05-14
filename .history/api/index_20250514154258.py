@@ -1,14 +1,3 @@
-from flask import Flask, request, jsonify, url_for, send_from_directory, render_template
-from twilio.twiml.voice_response import VoiceResponse, Gather, Say, Hangup
-from utils_twi import twiml
-from core.state import ConversationState
-from core.workflow import intake_workflow
-from twiml_template import introduction
-from copy import deepcopy
-from langgraph.types import Command, Interrupt
-from twilio.rest import Client
-from dotenv import load_dotenv
-from utils.tts import text_to_speech
 import tempfile
 from pathlib import Path
 import sys
@@ -20,6 +9,17 @@ ai_intake_dir = current_dir / 'AI-Intake'
 sys.path.append(str(ai_intake_dir))
 
 # Now import modules from AI-Intake
+from AI_Intake.utils.tts import text_to_speech
+from dotenv import load_dotenv
+from twilio.rest import Client
+from langgraph.types import Command, Interrupt
+from copy import deepcopy
+from AI_Intake.twiml_template import introduction
+from AI_Intake.core.workflow import intake_workflow
+from AI_Intake.core.state import ConversationState
+from AI_Intake.utils_twi import twiml
+from twilio.twiml.voice_response import VoiceResponse, Gather, Say, Hangup
+from flask import Flask, request, jsonify, url_for, send_from_directory, render_template
 
 # Load environment variables
 load_dotenv()

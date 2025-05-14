@@ -1,25 +1,31 @@
-from flask import Flask, request, jsonify, url_for, send_from_directory, render_template
-from twilio.twiml.voice_response import VoiceResponse, Gather, Say, Hangup
-from utils_twi import twiml
-from core.state import ConversationState
-from core.workflow import intake_workflow
-from twiml_template import introduction
-from copy import deepcopy
-from langgraph.types import Command, Interrupt
-from twilio.rest import Client
-from dotenv import load_dotenv
-from utils.tts import text_to_speech
 import tempfile
-from pathlib import Path
+from utils.tts import text_to_speech
+from dotenv import load_dotenv
+from twilio.rest import Client
+from langgraph.types import Command, Interrupt
+from copy import deepcopy
+from twiml_template import introduction
+from core.workflow import intake_workflow
+from core.state import ConversationState
+# Removed save_request_data as we're disabling data saving
+from utils_twi import twiml
+from twilio.twiml.voice_response import VoiceResponse, Gather, Say, Hangup
+from flask import Flask, request, jsonify, url_for, send_from_directory, render_template
 import sys
 import os
+from pathlib import Path
 
 # Add the AI-Intake directory to Python path
 current_dir = Path(__file__).parent.parent
 ai_intake_dir = current_dir / 'AI-Intake'
 sys.path.append(str(ai_intake_dir))
 
-# Now import modules from AI-Intake
+# Import needed modules from AI-Intake
+
+# Fix imports - proper way to import
+# Disabled Airtable imports
+# from airtable.outbound import airtable_to_json, write_json_file
+# from airtable.utils import populate_form_data
 
 # Load environment variables
 load_dotenv()
