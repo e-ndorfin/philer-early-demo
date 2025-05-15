@@ -199,6 +199,6 @@ def extract_entities_node(state: ConversationState) -> Dict[str, Any]:
     updated_form_data[current_question_id] = extracted_value
 
     # TESTING ONLY: Update test JSON
-    update_test_json(updated_form_data, current_question_id, extracted_value)
+    # update_test_json(updated_form_data, current_question_id, extracted_value)
 
     return {"form_data": updated_form_data}
