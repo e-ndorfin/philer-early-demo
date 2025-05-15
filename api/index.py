@@ -163,15 +163,47 @@ def in_call():
             response.hangup()
 
         return convert_to_twiml(response)
+    else:  # No input received
+        user_response = "what is the weather"
+        command = Command(resume=user_response)
+        done = False
 
-    # persist for the next webhook hit
-    call_sessions[call_sid] = state
+        if state["current_question_id"] == 'farewell':
+            command = Command(resume="okay")
 
-    twiml_xml = state.get("twiml")
-    if not twiml_xml:
-        return "No TwiML generated", 500
+        for event in intake_workflow.stream(command, config=config, stream_mode="values"):
+            print("---- next node ------")
+            print(event)
+            print("----------------")
+            state.update(event)
+            if event.get("is_done"):
+                done = True
+            if "__interrupt__" in event:
+                interrupt = event["__interrupt__"][0]
+                question = interrupt.value
+            else:
+                question = event["agent_response"]
 
-    return convert_to_twiml(str(twiml_xml))
+        call_sessions[call_sid] = state
+        response = VoiceResponse()
+        gather = Gather(
+            input='speech',
+            action=url_for('in_call'),
+            language='en-US',
+            method='POST',
+            speechTimeout=2
+        )
+        if question:
+            audio_url = text_to_speech(question)
+            gather.play(audio_url)
+        if done:
+            print("DONE")
+            response.hangup()
+        response.append(gather)
+        response.say("We did not receive a response, please try again.")
+        response.redirect(url_for('in_call', _external=True), method='POST')
+
+        return twiml(response)
 
 
 @app.route("/audio/<path:filename>")
