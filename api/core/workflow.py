@@ -86,6 +86,10 @@ def route_after_user_input(state: ConversationState) -> str:
     """Routes after user input - handles potential END state"""
     return "classify_intent"
 
+def route_after_user_input(state: ConversationState):
+    return END if state["is_done"] else "classify_intent"
+
+
 def route_after_intent(state: ConversationState) -> str:
     """Routes the conversation based on the classified intent."""
     intent = state["intent"]
@@ -152,7 +156,7 @@ def create_intake_workflow():
     # Using conditional edge to handle potential END state
     workflow.add_conditional_edges(
         "get_user_input",
-        lambda state: END if state == END else "classify_intent",
+        route_after_user_input,
         {
             END: END, 
             "classify_intent": "classify_intent"
