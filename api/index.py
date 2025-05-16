@@ -114,7 +114,7 @@ def in_call():
             action=url_for('in_call'),
             language='en-US',
             method='POST',
-            speechTimeout=2
+            speechTimeout='auto'
         )
         # gather.say(question)
         gather.play(audio_url)
@@ -150,7 +150,7 @@ def in_call():
             action=url_for('in_call'),
             language='en-US',
             method='POST',
-            speechTimeout=2
+            speechTimeout='auto'
         )
         # gather.say(question)
         if question:
@@ -191,7 +191,7 @@ def in_call():
             action=url_for('in_call'),
             language='en-US',
             method='POST',
-            speechTimeout=2
+            speechTimeout='auto'
         )
         if question:
             audio_url = text_to_speech(question)
