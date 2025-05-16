@@ -59,7 +59,7 @@ def get_user_input_node(state: ConversationState) -> Dict[str, Any]:
     
     if state.get("is_done", False):
         print("\nConversation complete. Thank you for using our service!")
-        return END
+        return {}
     
     # Comment out speech-to-text
     # user_input = speech_to_text()
