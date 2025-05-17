@@ -13,10 +13,10 @@ import os
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
-from core.state import ConversationState
+from ..core.state import ConversationState
 
-from questions.questions import QUESTIONS
-from utils.question_utils import get_question_by_id
+from ..questions.questions import QUESTIONS
+from ..utils.question_utils import get_question_by_id
 
 # Load environment variables
 load_dotenv()

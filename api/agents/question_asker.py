@@ -12,9 +12,9 @@ from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 
-from questions.questions import QUESTIONS
-from utils.question_utils import get_question_by_id, get_next_question_id
-from core.state import ConversationState
+from ..questions.questions import QUESTIONS
+from ..utils.question_utils import get_question_by_id, get_next_question_id
+from ..core.state import ConversationState
 # from utils.tts import text_to_speech
 
 # Load environment variables

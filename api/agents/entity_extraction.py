@@ -10,12 +10,12 @@ import os
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
-from questions.questions import QUESTIONS
-from core.state import ConversationState
-from utils.date_utils import normalize_date
-from utils.json_utils import update_test_json
-from utils.extraction_utils import get_extraction_prompt, process_structured_field, is_date_question, FIELD_MAPPING
-from utils.question_utils import get_question_by_id
+from ..questions.questions import QUESTIONS
+from ..core.state import ConversationState
+from ..utils.date_utils import normalize_date
+from ..utils.json_utils import update_test_json
+from ..utils.extraction_utils import get_extraction_prompt, process_structured_field, is_date_question, FIELD_MAPPING
+from ..utils.question_utils import get_question_by_id
 
 # Load environment variables
 load_dotenv()
