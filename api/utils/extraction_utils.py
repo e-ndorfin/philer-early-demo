@@ -6,6 +6,56 @@ This module provides utility functions for extracting structured information fro
 
 from typing import Dict, Any, List, Tuple
 
+# Mapping of question IDs to expected field types and formats
+FIELD_MAPPING = {
+    # Main applicant fields
+    "applicant_first_name": {"type": "name", "format": "text"},
+    "applicant_last_name": {"type": "name", "format": "text"},
+    "applicant_dob": {"type": "date", "format": "YYYY-MM-DD"},
+    "applicant_first_time_buyer": {"type": "boolean", "format": "yes/no"},
+    "applicant_citizenship": {"type": "boolean", "format": "yes/no"},
+    "applicant_decision_making": {"type": "boolean", "format": "yes/no"},
+    
+    # Spouse fields
+    "spouse_first_name": {"type": "name", "format": "text"},
+    "spouse_last_name": {"type": "name", "format": "text"},
+    "spouse_dob": {"type": "date", "format": "YYYY-MM-DD"},
+    "spouse_first_time_buyer": {"type": "boolean", "format": "yes/no"},
+    "spouse_citizenship": {"type": "boolean", "format": "yes/no"},
+    
+    # Property information
+    "transaction_type": {"type": "choice", "format": "Purchase/Sell/Refinance"},
+    "property_construction_status": {"type": "text", "format": "text"},
+    "property_type": {"type": "choice", "format": "text"},
+    "closing_date": {"type": "date", "format": "YYYY-MM-DD"},
+    "property_postal_code": {"type": "text", "format": "text"},
+    "property_address": {"type": "address", "format": "text"},
+    "living_at_property": {"type": "boolean", "format": "yes/no"},
+    "alternative_address": {"type": "address", "format": "text"},
+    "alternative_postal_code": {"type": "text", "format": "text"},
+    "property_usage": {"type": "choice", "format": "text"},
+    "client_living_address": {"type": "address", "format": "text"},
+    "client_living_postal_code": {"type": "text", "format": "text"},
+    
+    # Marital status and applicants
+    "marital_status": {"type": "choice", "format": "text"},
+    "additional_applicants_question": {"type": "boolean", "format": "yes/no"},
+    "single_additional_applicants_question": {"type": "boolean", "format": "yes/no"},
+    
+    # Title holding
+    "multiple_owners_question": {"type": "boolean", "format": "yes/no"},
+    "title_holding_question": {"type": "choice", "format": "text"},
+    "primary_applicant_ownership_percentage": {"type": "percentage", "format": "number"},
+    "spouse_ownership_percentage": {"type": "percentage", "format": "number"},
+    "additional_applicant_ownership_percentage": {"type": "percentage", "format": "number"},
+    
+    # Professional info
+    "mortgage_advisor": {"type": "structured", "format": "name|company|lender"},
+    "real_estate_agent": {"type": "structured", "format": "name|company"},
+    "home_insurance": {"type": "boolean", "format": "yes/no"},
+    "home_insurance_details": {"type": "structured", "format": "company|advisor"}
+}
+
 def format_conversation_history(history: List) -> str:
     """
     Format the conversation history for prompt templates.
@@ -22,7 +72,7 @@ def format_conversation_history(history: List) -> str:
         formatted_history.append(f"{role}: {message}")
     return "\n".join(formatted_history)
 
-def get_extraction_prompt(question_id: str, question_text: str, user_response: str, field_mapping: Dict) -> Dict[str, Any]:
+def get_extraction_prompt(question_id: str, question_text: str, user_response: str, field_mapping: Dict = None) -> Dict[str, Any]:
     """
     Get the appropriate prompt for the question type based on field mappings.
     
@@ -30,11 +80,15 @@ def get_extraction_prompt(question_id: str, question_text: str, user_response: s
         question_id: The ID of the current question
         question_text: The text of the current question
         user_response: The user's response to extract from
-        field_mapping: Dictionary mapping question IDs to field types and formats
+        field_mapping: Dictionary mapping question IDs to field types and formats (defaults to FIELD_MAPPING)
         
     Returns:
         Dictionary with template key and data for the prompt
     """
+    # Use the provided field_mapping or default to the module's FIELD_MAPPING
+    if field_mapping is None:
+        field_mapping = FIELD_MAPPING
+        
     field_info = field_mapping.get(question_id, {"type": "text", "format": "text"})
     field_type = field_info["type"]
     field_format = field_info["format"]

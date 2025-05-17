@@ -10,69 +10,18 @@ import os
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
-from ..questions.questions import QUESTIONS
-from ..core.state import ConversationState
-from ..utils.date_utils import normalize_date
-from ..utils.json_utils import update_test_json
-from ..utils.extraction_utils import get_extraction_prompt, process_structured_field, is_date_question
-from ..utils.question_utils import get_question_by_id
+from questions.questions import QUESTIONS
+from core.state import ConversationState
+from utils.date_utils import normalize_date
+from utils.json_utils import update_test_json
+from utils.extraction_utils import get_extraction_prompt, process_structured_field, is_date_question, FIELD_MAPPING
+from utils.question_utils import get_question_by_id
 
 # Load environment variables
 load_dotenv()
 groq_api_key = os.getenv("GROQ_API_KEY")
 
-model = ChatGroq(api_key=groq_api_key,
-                 model="llama-3.3-70b-versatile", temperature=0.1)
-
-# Mapping of question IDs to expected field types and formats
-FIELD_MAPPING = {
-    # Main applicant fields
-    "applicant_first_name": {"type": "name", "format": "text"},
-    "applicant_last_name": {"type": "name", "format": "text"},
-    "applicant_dob": {"type": "date", "format": "YYYY-MM-DD"},
-    "applicant_first_time_buyer": {"type": "boolean", "format": "yes/no"},
-    "applicant_citizenship": {"type": "boolean", "format": "yes/no"},
-    "applicant_decision_making": {"type": "boolean", "format": "yes/no"},
-
-    # Spouse fields
-    "spouse_first_name": {"type": "name", "format": "text"},
-    "spouse_last_name": {"type": "name", "format": "text"},
-    "spouse_dob": {"type": "date", "format": "YYYY-MM-DD"},
-    "spouse_first_time_buyer": {"type": "boolean", "format": "yes/no"},
-    "spouse_citizenship": {"type": "boolean", "format": "yes/no"},
-
-    # Property information
-    "transaction_type": {"type": "choice", "format": "Buy/Sell/Refinance"},
-    "property_construction_status": {"type": "text", "format": "text"},
-    "property_type": {"type": "choice", "format": "text"},
-    "closing_date": {"type": "date", "format": "YYYY-MM-DD"},
-    "property_postal_code": {"type": "text", "format": "text"},
-    "property_address": {"type": "address", "format": "text"},
-    "living_at_property": {"type": "boolean", "format": "yes/no"},
-    "alternative_address": {"type": "address", "format": "text"},
-    "alternative_postal_code": {"type": "text", "format": "text"},
-    "property_usage": {"type": "choice", "format": "text"},
-    "client_living_address": {"type": "address", "format": "text"},
-    "client_living_postal_code": {"type": "text", "format": "text"},
-
-    # Marital status and applicants
-    "marital_status": {"type": "choice", "format": "text"},
-    "additional_applicants_question": {"type": "boolean", "format": "yes/no"},
-    "single_additional_applicants_question": {"type": "boolean", "format": "yes/no"},
-
-    # Title holding
-    "multiple_owners_question": {"type": "boolean", "format": "yes/no"},
-    "title_holding_question": {"type": "choice", "format": "text"},
-    "primary_applicant_ownership_percentage": {"type": "percentage", "format": "number"},
-    "spouse_ownership_percentage": {"type": "percentage", "format": "number"},
-    "additional_applicant_ownership_percentage": {"type": "percentage", "format": "number"},
-
-    # Professional info
-    "mortgage_advisor": {"type": "structured", "format": "name|company|lender"},
-    "real_estate_agent": {"type": "structured", "format": "name|company"},
-    "home_insurance": {"type": "boolean", "format": "yes/no"},
-    "home_insurance_details": {"type": "structured", "format": "company|advisor"}
-}
+model = ChatGroq(api_key=groq_api_key, model="llama-3.3-70b-versatile", temperature=0.1)
 
 # Prompt templates for different question types
 PROMPTS = {
@@ -137,9 +86,28 @@ Current question: {question_text}
 User's response: {user_response}
 
 Return ONLY 'yes' or 'no' - nothing else.
+""",
+    
+    "verification": """
+You are helping verify pre-filled form data with users.
+Analyze the user's response to determine if they are:
+1. Confirming the existing data is correct (respond with "confirmed")
+2. Providing a new/corrected value (extract and return the new value)
+
+Current question: {question_text}
+Pre-filled data: {prefilled_value}
+User's response: {user_response}
+Field type: {field_type}
+
+EXAMPLES:
+- If user says: "Yes that's correct", return "confirmed"
+- If user says: "No, it's actually John Smith", return "John Smith"
+- If user says: "It's 123 Main St, not 123 Main Street", return "123 Main St"
+
+If the user confirms the data is correct, return ONLY "confirmed".
+If the user provides a correction, return ONLY the corrected value without any explanation.
 """
 }
-
 
 def extract_entities_node(state: ConversationState) -> Dict[str, Any]:
     """
@@ -148,57 +116,97 @@ def extract_entities_node(state: ConversationState) -> Dict[str, Any]:
     """
     current_question_id = state["current_question_id"]
     current_question = get_question_by_id(current_question_id)
-
+    
     if not current_question:
         return {}
-
+        
     user_response = state.get("user_response", "")
-
-    # Check if this is a date question
+    
+    if state.get("is_verification", False):
+        return process_verification_response(state, current_question_id, current_question, user_response)
+    
     if is_date_question(current_question["text"]):
-        # Try to normalize the date first
         normalized_date = normalize_date(user_response)
         if normalized_date != "incomplete":
             updated_form_data = state["form_data"].copy()
             updated_form_data[current_question_id] = normalized_date
-
-            # TESTING ONLY: Update test JSON
-            # update_test_json(updated_form_data, current_question_id, normalized_date)
-
+            
+            # TESING ONLY: Update test JSON
+            update_test_json(updated_form_data, current_question_id, normalized_date)
+            
             return {"form_data": updated_form_data}
-
-    # Get the appropriate prompt for the question type
+    
     prompt_info = get_extraction_prompt(
-        current_question_id,
-        current_question["text"],
-        user_response,
-        FIELD_MAPPING
+        current_question_id, 
+        current_question["text"], 
+        user_response
     )
-
-    # Create the prompt template
+    
     prompt_template = PROMPTS[prompt_info["template_key"]]
     extraction_prompt = ChatPromptTemplate.from_template(prompt_template)
-
-    # Run extraction with the LLM
+    
     chain = extraction_prompt | model
     extraction_response = chain.invoke(prompt_info["data"])
-
-    # Process the raw extracted value
+    
     extracted_value = extraction_response.content.strip()
-
+    
     if extracted_value.lower() == "incomplete":
         return {}
-
-    # Special handling for structured fields
+        
     field_info = FIELD_MAPPING.get(current_question_id, {"type": "text"})
     if field_info["type"] == "structured":
-        extracted_value = process_structured_field(
-            extracted_value, current_question_id)
-
+        extracted_value = process_structured_field(extracted_value, current_question_id)
+        
     updated_form_data = state["form_data"].copy()
     updated_form_data[current_question_id] = extracted_value
-
+    
     # TESTING ONLY: Update test JSON
-    # update_test_json(updated_form_data, current_question_id, extracted_value)
-
+    update_test_json(updated_form_data, current_question_id, extracted_value)
+    
     return {"form_data": updated_form_data}
+
+def process_verification_response(state: ConversationState, 
+                                question_id: str, 
+                                question: Dict[str, Any], 
+                                user_response: str) -> Dict[str, Any]:
+    """
+    Process a verification response from the user.\
+    """
+    form_data = state["form_data"]
+    prefilled_value = form_data.get(question_id, "")
+    field_info = FIELD_MAPPING.get(question_id, {"type": "text"})
+    
+    verification_prompt = ChatPromptTemplate.from_template(PROMPTS["verification"])
+    
+    chain = verification_prompt | model
+    verification_response = chain.invoke({
+        "question_text": question["text"],
+        "prefilled_value": prefilled_value,
+        "user_response": user_response,
+        "field_type": field_info["type"]
+    })
+    
+    extracted_value = verification_response.content.strip()
+    
+    if extracted_value.lower() == "confirmed":
+        return {
+            "is_verification": False
+        }
+    
+    updated_form_data = form_data.copy()
+    
+    if field_info["type"] == "date":
+        extracted_value = normalize_date(extracted_value)
+    
+    if field_info["type"] == "structured":
+        extracted_value = process_structured_field(extracted_value, question_id)
+    
+    updated_form_data[question_id] = extracted_value
+    
+    # TESTING ONLY: Update test JSON
+    update_test_json(updated_form_data, question_id, extracted_value)
+    
+    return {
+        "form_data": updated_form_data,
+        "is_verification": False
+    } 

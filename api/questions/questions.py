@@ -7,7 +7,7 @@ based on conditional logic and previous answers.
 QUESTIONS = [
     {
         "id": "welcome",
-        "text": "Hi there! Welcome to Philer! I'm your virtual assistant. I'm here to guide you through the intake process for your real estate closing. I'll be asking you a few questions about your transaction — this should take about 10 to 15 minutes. Before we begin, please make sure you're in a quiet place so we can talk without interruptions. If you have any questions along the way, just ask! And don't worry if you are not able to answer some questions. We will send you a summary of the information you provide to us to your email and you will be able to adjust anything using the philer platform. Ready to get started?",
+        "text": "Hi there! Welcome to Philer! I'm your virtual assistant. I'm here to guide you through the intake process for your real estate closing. I'll be asking you a few questions about your transaction — this should take about 5 minutes. Before we begin, please make sure you're in a quiet place so we can talk without interruptions. Please speak slowly and clearly, and don't worry if you are not able to answer some questions. We will send you a summary of the information you provide to us to your email and you will be able to adjust anything using the philer platform. Ready to get started?",
         "required": True,
         "next": "applicant_first_name"
     },
@@ -37,7 +37,7 @@ QUESTIONS = [
     },
     {
         "id": "applicant_first_time_buyer",
-        "text": "Are you a first-time homebuyer? This means you never purchased any property anywhere in world.",
+        "text": "Are you a first-time homebuyer? This means you have never purchased any property anywhere in the world.",
         "required": True,
         "next": "applicant_citizenship"
     },
@@ -55,15 +55,15 @@ QUESTIONS = [
     },
     {
         "id": "transaction_type",
-        "text": "Are you Buying, Selling or Refinancing your property?",
+        "text": "Are you Purchasing, Selling or Refinancing your property?",
         "required": True,
-        "next": lambda state: "property_construction_status" if state.get("transaction_type", "").lower() == "buying" else "property_type"
+        "next": lambda state: "property_construction_status" if state.get("transaction_type", "").lower() == "purchasing" else "property_type"
     },
     {
         "id": "property_construction_status",
         "text": "Is the property already built or it is a pre-construction purchase?",
         "required": False,
-        "condition": lambda state: state.get("transaction_type", "").lower() == "buying",
+        "condition": lambda state: state.get("transaction_type", "").lower() == "purchasing",
         "next": "property_type"
     },
     {
@@ -94,7 +94,7 @@ QUESTIONS = [
         "id": "living_at_property",
         "text": "Is this the address where you will be living after closing?",
         "required": False,
-        "condition": lambda state: state.get("transaction_type", "").lower() == "buying",
+        "condition": lambda state: state.get("transaction_type", "").lower() == "purchasing",
         "next": lambda state: "alternative_address" if state.get("living_at_property", "").lower() in ["no", "n", "nope"] else "property_usage"
     },
     {
@@ -115,7 +115,7 @@ QUESTIONS = [
         "id": "property_usage",
         "text": "How do you intend to use the property you are acquiring? Primary Residence, Secondary Residence, Investment Property, Fix and Flip, Family Use or Other uses?",
         "required": False,
-        "condition": lambda state: state.get("transaction_type", "").lower() == "buying",
+        "condition": lambda state: state.get("transaction_type", "").lower() == "purchasing",
         "next": lambda state: "marital_status" if (state.get("property_usage", "").lower() == "primary residence" or 
                                                  state.get("living_at_property", "").lower() in ["yes", "y", "yeah", "yep"] or
                                                  state.get("alternative_address") is not None) else "client_living_address"
@@ -124,7 +124,7 @@ QUESTIONS = [
         "id": "client_living_address",
         "text": "What is your current address where you are living?",
         "required": False,
-        "condition": lambda state: (state.get("transaction_type", "").lower() == "buying" and 
+        "condition": lambda state: (state.get("transaction_type", "").lower() == "purchasing" and 
                                   state.get("property_usage", "").lower() != "primary residence" and
                                   state.get("living_at_property", "").lower() not in ["yes", "y", "yeah", "yep"] and
                                   state.get("alternative_address") is None),
@@ -134,7 +134,7 @@ QUESTIONS = [
         "id": "client_living_postal_code",
         "text": "And what is the postal code of your living address?",
         "required": False,
-        "condition": lambda state: (state.get("transaction_type", "").lower() == "buying" and 
+        "condition": lambda state: (state.get("transaction_type", "").lower() == "purchasing" and 
                                   state.get("property_usage", "").lower() != "primary residence"),
         "next": "marital_status"
     },
@@ -160,21 +160,21 @@ QUESTIONS = [
     },
     {
         "id": "spouse_dob",
-        "text": "What is their date of birth?",
+        "text": "What is your spouse's date of birth?",
         "required": False,
         "condition": lambda state: state.get("marital_status", "").lower() in ["married", "common law partner", "common law", "common-law"],
         "next": "spouse_first_time_buyer"
     },
     {
         "id": "spouse_first_time_buyer",
-        "text": "Are they a first-time homebuyer? This means they never purchased any property anywhere in world.",
+        "text": "Is your spouse a first-time homebuyer? This means your spouse has never purchased any property anywhere in the world.",
         "required": False,
         "condition": lambda state: state.get("marital_status", "").lower() in ["married", "common law partner", "common law", "common-law"],
         "next": "spouse_citizenship"
     },
     {
         "id": "spouse_citizenship",
-        "text": "Are they a Canadian Citizen or Permanent Resident? Please specify.",
+        "text": "Is your spouse a Canadian Citizen or Permanent Resident? Please specify.",
         "required": False,
         "condition": lambda state: state.get("marital_status", "").lower() in ["married", "common law partner", "common law", "common-law"],
         "next": "additional_applicants_question"
@@ -191,11 +191,11 @@ QUESTIONS = [
         "text": "Will anyone else be on the application besides you? Please answer 'No' if you are the only applicant, or 'Yes' if there are additional people.",
         "required": False,
         "condition": lambda state: state.get("marital_status", "").lower() not in ["married", "common law partner", "common law", "common-law"],
-        "next": lambda state: "mortgage_advisor" if state.get("single_additional_applicants_question", "").lower() in ["no", "n", "nope"] else "additional_applicant_transition"
+        "next": lambda state: "farewell" if state.get("single_additional_applicants_question", "").lower() in ["no", "n", "nope"] else "additional_applicant_transition"
     },
     {
         "id": "additional_applicant_transition",
-        "text": "Ok! Please tell me their details",
+        "text": "Ok! Please tell me the additional applicant's details",
         "required": False,
         "condition": lambda state: (state.get("additional_applicants_question", "").lower() not in ["no", "n", "nope"] or 
                                    state.get("single_additional_applicants_question", "").lower() not in ["no", "n", "nope"]),
@@ -219,7 +219,7 @@ QUESTIONS = [
     },
     {
         "id": "additional_applicant_dob",
-        "text": "What is their date of birth?",
+        "text": "What is the additional applicant's date of birth?",
         "required": False,
         "condition": lambda state: (state.get("additional_applicants_question", "").lower() not in ["no", "n", "nope"] or 
                                    state.get("single_additional_applicants_question", "").lower() not in ["no", "n", "nope"]),
@@ -227,7 +227,7 @@ QUESTIONS = [
     },
     {
         "id": "additional_applicant_first_time_buyer",
-        "text": "Are they a first-time homebuyer? This means they never purchased any property anywhere in world.",
+        "text": "Is the additional applicant a first-time homebuyer? This means the additional applicant has never purchased any property anywhere in the world.",
         "required": False,
         "condition": lambda state: (state.get("additional_applicants_question", "").lower() not in ["no", "n", "nope"] or 
                                    state.get("single_additional_applicants_question", "").lower() not in ["no", "n", "nope"]),
@@ -235,7 +235,7 @@ QUESTIONS = [
     },
     {
         "id": "additional_applicant_citizenship",
-        "text": "Are they a Canadian Citizen or Permanent Resident? Please specify.",
+        "text": "Is the additional applicant a Canadian Citizen or Permanent Resident? Please specify.",
         "required": False,
         "condition": lambda state: (state.get("additional_applicants_question", "").lower() not in ["no", "n", "nope"] or 
                                    state.get("single_additional_applicants_question", "").lower() not in ["no", "n", "nope"]),
@@ -256,14 +256,14 @@ QUESTIONS = [
         "condition": lambda state: (state.get("marital_status", "").lower() in ["married", "common law partner", "common law", "common-law"] or
                                   state.get("additional_applicants_question", "").lower() not in ["no", "n", "nope"] or
                                   state.get("single_additional_applicants_question", "").lower() not in ["no", "n", "nope"]),
-        "next": lambda state: "title_holding_question" if state.get("multiple_owners_question", "").lower() in ["yes", "y", "yeah"] else "mortgage_advisor"
+        "next": lambda state: "title_holding_question" if state.get("multiple_owners_question", "").lower() in ["yes", "y", "yeah"] else "farewell"
     },
     {
         "id": "title_holding_question",
         "text": "How do you intend to hold the title? There are two options. Option one: Joint Tenancy - This is usually chosen by spouses as the interest in the property automatically passes to the surviving owner in case of the other owner's death - in this case all owners must have equal ownership shares. Option two is Tenants in common. In this case, each owner's share goes to their estate/heirs upon death. Unlike in the first option, ownership can be unequal (e.g., one person owns 60%, the other 40%). What option you want to chose? Joint Tenancy or Tenants in Common?",
         "required": False,
         "condition": lambda state: state.get("multiple_owners_question", "").lower() in ["yes", "y", "yeah"],
-        "next": lambda state: "primary_applicant_ownership_percentage" if state.get("title_holding_question", "").lower() == "tenants in common" else "mortgage_advisor"
+        "next": lambda state: "primary_applicant_ownership_percentage" if state.get("title_holding_question", "").lower() == "tenants in common" else "farewell"
     },
     {
         "id": "primary_applicant_ownership_percentage",
@@ -278,7 +278,7 @@ QUESTIONS = [
         "required": False,
         "condition": lambda state: (state.get("title_holding_question", "").lower() == "tenants in common" and
                                   state.get("marital_status", "").lower() in ["married", "common law partner", "common law", "common-law"]),
-        "next": lambda state: "additional_applicant_ownership_percentage" if state.get("additional_applicants_question", "").lower() not in ["no", "n", "nope"] else "mortgage_advisor"
+        "next": lambda state: "additional_applicant_ownership_percentage" if state.get("additional_applicants_question", "").lower() not in ["no", "n", "nope"] else "farewell"
     },
     {
         "id": "additional_applicant_ownership_percentage",
@@ -287,36 +287,36 @@ QUESTIONS = [
         "condition": lambda state: (state.get("title_holding_question", "").lower() == "tenants in common" and
                                   ((state.get("additional_applicants_question", "").lower() not in ["no", "n", "nope"]) or
                                    (state.get("single_additional_applicants_question", "").lower() not in ["no", "n", "nope"]))),
-        "next": "mortgage_advisor"
-    },
-    {
-        "id": "mortgage_advisor",
-        "text": "Would you know who your Mortgage Advisor is? If yes, please share their full name, Brokerage and your lender.",
-        "required": True,
-        "next": "real_estate_agent"
-    },
-    {
-        "id": "real_estate_agent",
-        "text": "Please share the details of your real estate agent. What is their full-name and Real Estate Brokerage Company?",
-        "required": True,
-        "next": "home_insurance"
-    },
-    {
-        "id": "home_insurance",
-        "text": "If you are financing your home, it is likely that the lender will require you to have Home Insurance. Have you acquired Home Insurance yet?",
-        "required": True,
-        "next": lambda state: "home_insurance_details" if state.get("home_insurance", "").lower() in ["yes", "y", "yeah"] else "farewell"
-    },
-    {
-        "id": "home_insurance_details",
-        "text": "Please share more details of the home insurance company and their advisor.",
-        "required": False,
-        "condition": lambda state: state.get("home_insurance", "").lower() in ["yes", "y", "yeah"],
         "next": "farewell"
     },
+    # {
+    #     "id": "mortgage_advisor",
+    #     "text": "Would you know who your Mortgage Advisor is? If yes, please share their full name, Brokerage and your lender.",
+    #     "required": True,
+    #     "next": "real_estate_agent"
+    # },
+    # {
+    #     "id": "real_estate_agent",
+    #     "text": "Please share the details of your real estate agent. What is their full-name and Real Estate Brokerage Company?",
+    #     "required": True,
+    #     "next": "home_insurance"
+    # },
+    # {
+    #     "id": "home_insurance",
+    #     "text": "If you are financing your home, it is likely that the lender will require you to have Home Insurance. Have you acquired Home Insurance yet?",
+    #     "required": True,
+    #     "next": lambda state: "home_insurance_details" if state.get("home_insurance", "").lower() in ["yes", "y", "yeah"] else "farewell"
+    # },
+    # {
+    #     "id": "home_insurance_details",
+    #     "text": "Please share more details of the home insurance company and their advisor.",
+    #     "required": False,
+    #     "condition": lambda state: state.get("home_insurance", "").lower() in ["yes", "y", "yeah"],
+    #     "next": "farewell"
+    # },
     {
         "id": "farewell",
-        "text": "We've completed your Intake! We will send you an email with the summary of the information you provided to us shortly. Don't worry if there are typos or any missing information. You will be able to adjust anything on the Philer Platform - we will also provide you with instructions to access it. Finally, we will ask you to send two pieces of ID and any other required documents you haven't sent them to us already. Everything you need to know will be in the email we are sending shortly. Thank you for choosing Philer for your real estate closing! Please say Ok to confirm. Have a good day!",
+        "text": "We've completed your Intake! We will send you an email with the summary of the information you provided to us shortly. Don't worry if there are typos or any missing information. You will be able to adjust anything on the Philer Platform - we will also provide you with instructions to access it. Finally, we will ask you to send two pieces of ID and any other required documents you haven't sent them to us already. Everything you need to know will be in the email we are sending shortly. Thank you for choosing Philer for your real estate closing! Have a good day!",
         "required": True,
         "next": None
     }
