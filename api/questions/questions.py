@@ -7,7 +7,7 @@ based on conditional logic and previous answers.
 QUESTIONS = [
     {
         "id": "welcome",
-        "text": "Hi there! Welcome to Philer! I'm your virtual assistant. I'm here to guide you through the intake process for your real estate closing. I'll be asking you a few questions about your transaction — this should take about 5 minutes. Before we begin, please make sure you're in a quiet place so we can talk without interruptions. Please speak slowly and clearly, and don't worry if you are not able to answer some questions. We will send you a summary of the information you provide to us to your email and you will be able to adjust anything using the philer platform. Ready to get started?",
+        "text": "Hi there! Welcome to Philer! I'm your virtual assistant. I'm here to guide you through the intake process for your real estate closing. I'll be asking you a few questions about your transaction — this should take about 5 minutes. Before we begin, please make sure you're in a quiet place so we can talk without interruptions. Please speak slowly and clearly, and don't worry if you are not able to answer some questions. We will send you a summary of the information you provide to us to your email and you will be able to adjust anything using the philer platform. Ready to get started? say Yes.",
         "required": True,
         "next": "applicant_first_name"
     },
