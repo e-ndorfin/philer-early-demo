@@ -2,7 +2,8 @@ from twilio.twiml.voice_response import VoiceResponse, Gather
 import os
 from dotenv import load_dotenv
 import re
-from tts import text_to_speech
+from utils import  text_to_speech
+
 def introduction() -> str:
     """
     Returns TwiML code for introductory message. 
