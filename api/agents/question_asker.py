@@ -186,7 +186,7 @@ def ask_question_node(state: ConversationState) -> Dict[str, Any]:
     if current_question_id == "farewell":
         return {"is_done": True}
     
-    if current_question_id == "welcome" and len(state["conversation_history"]) == 0:
+    if current_question_id == "welcome" and len(form_data) > 0 and len(state["conversation_history"]) == 0:
         welcome_question = get_question_by_id("welcome")
         agent_response = welcome_question["text"]
         history = state["conversation_history"] + [("Assistant", agent_response)]
