@@ -2,7 +2,8 @@ from twilio.twiml.voice_response import VoiceResponse, Gather
 import os
 from dotenv import load_dotenv
 import re
-from utils import  text_to_speech
+from .tts import text_to_speech
+
 
 def introduction() -> str:
     """
